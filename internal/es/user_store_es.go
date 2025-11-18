@@ -6,19 +6,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"processor/internal/domain"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/elastic/go-elasticsearch/v8/esutil"
 )
 
-type userStoreEs struct {
+type usersStoreEs struct {
 	client    *elasticsearch.Client
 	indexName string
 }
 
-func NewUserStore(client *elasticsearch.Client, indexName string) (UserStore, error) {
-	s := &userStoreEs{
+func NewUsersStore(client *elasticsearch.Client, indexName string) (UsersStore, error) {
+	s := &usersStoreEs{
 		client:    client,
 		indexName: indexName,
 	}
@@ -30,7 +31,7 @@ func NewUserStore(client *elasticsearch.Client, indexName string) (UserStore, er
 	return s, nil
 }
 
-func (s *userStoreEs) ensureIndex() error {
+func (s *usersStoreEs) ensureIndex() error {
 	res, err := s.client.Indices.Exists([]string{s.indexName})
 	if err != nil {
 		return err
@@ -72,7 +73,7 @@ func (s *userStoreEs) ensureIndex() error {
 	return nil
 }
 
-func (s *userStoreEs) IndexBulk(ctx context.Context, users []domain.User) error {
+func (s *usersStoreEs) IndexBulk(ctx context.Context, users []domain.User) error {
 	var buf bytes.Buffer
 
 	for _, user := range users {
@@ -107,6 +108,64 @@ func (s *userStoreEs) IndexBulk(ctx context.Context, users []domain.User) error 
 	return nil
 }
 
-func (s *userStoreEs) Search(ctx context.Context) ([]domain.User, error) {
-	return nil, nil
+func (s *usersStoreEs) GetAll(ctx context.Context) ([]domain.User, error) {
+	batchSize := 100
+	scroll := time.Minute * 1
+
+	users := make([]domain.User, 0)
+
+	res, err := s.client.Search(s.client.Search.WithIndex(s.indexName), s.client.Search.WithScroll(time.Minute*1), s.client.Search.WithSize(batchSize))
+	if err != nil || res.IsError() {
+		return nil, fmt.Errorf("search users: %w", err)
+	}
+
+	defer res.Body.Close()
+
+	type SearchResponse struct {
+		ScrollId string `json:"_scroll_id"`
+		Hits     struct {
+			Hits []struct {
+				Source domain.User `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+
+	var searchRes SearchResponse
+
+	if err := json.NewDecoder(res.Body).Decode(&searchRes); err != nil {
+		return nil, fmt.Errorf("decode search users response: %w", err)
+	}
+
+	scrollId := searchRes.ScrollId
+
+	for {
+		if len(searchRes.Hits.Hits) == 0 {
+			break
+		}
+
+		for _, hit := range searchRes.Hits.Hits {
+			users = append(users, hit.Source)
+		}
+
+		scrollRes, err := s.client.Scroll(s.client.Scroll.WithScrollID(scrollId), s.client.Scroll.WithScroll(scroll))
+		if err != nil {
+			return nil, fmt.Errorf("scroll users error: %w", err)
+		}
+
+		defer scrollRes.Body.Close()
+
+		if err := json.NewDecoder(scrollRes.Body).Decode(&searchRes); err != nil {
+			return nil, fmt.Errorf("decode search users response: %w", err)
+		}
+
+		scrollId = searchRes.ScrollId
+
+	}
+
+	_, err = s.client.ClearScroll(s.client.ClearScroll.WithScrollID(scrollId))
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }

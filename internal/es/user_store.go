@@ -5,7 +5,7 @@ import (
 	"processor/internal/domain"
 )
 
-type UserStore interface {
+type UsersStore interface {
 	IndexBulk(ctx context.Context, users []domain.User) error
-	Search(ctx context.Context) ([]domain.User, error)
+	GetAll(ctx context.Context) ([]domain.User, error)
 }

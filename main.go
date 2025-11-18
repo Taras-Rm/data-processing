@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"processor/internal/domain"
 	"processor/internal/es"
 
 	"github.com/elastic/go-elasticsearch/v8"
@@ -18,19 +17,15 @@ func main() {
 		panic(err)
 	}
 
-	uuserStore, err := es.NewUserStore(client, "users")
+	usersStore, err := es.NewUsersStore(client, "users")
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
 
-	users := []domain.User{
-		{Name: "John Doe", Email: "john@gm.com", Age: 30},
-		{Name: "Jane Doe", Email: "tom@t.com", Age: 34},
-	}
-
-	err = uuserStore.IndexBulk(context.Background(), users)
+	_, err = usersStore.GetAll(context.Background())
 	if err != nil {
 		fmt.Println(err)
 	}
+
 }

@@ -39,7 +39,7 @@ func run() error {
 		return err
 	}
 
-	userStore, err := es.NewUserStore(client, defaultIndexName)
+	userStore, err := es.NewUsersStore(client, defaultIndexName)
 	if err != nil {
 		return err
 	}
