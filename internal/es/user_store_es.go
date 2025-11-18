@@ -109,7 +109,7 @@ func (s *usersStoreEs) IndexBulk(ctx context.Context, users []domain.User) error
 }
 
 func (s *usersStoreEs) GetAll(ctx context.Context) ([]domain.User, error) {
-	batchSize := 100
+	batchSize := 2000
 	scroll := time.Minute * 1
 
 	users := make([]domain.User, 0)

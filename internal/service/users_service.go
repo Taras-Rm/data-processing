@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"processor/internal/es"
 	"processor/internal/infra/csv"
+	"time"
 )
 
 type UsersServiceI interface {
@@ -24,15 +25,23 @@ func NewUsersService(usersStore es.UsersStore, usersCsv csv.UsersCsvI) UsersServ
 }
 
 func (s *usersService) ProcessAll(ctx context.Context) error {
+	start := time.Now()
+
 	users, err := s.usersStore.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("get all users: %w", err)
 	}
 
+	fmt.Printf("reading from csv time: %s\n", time.Since(start))
+
+	start = time.Now()
+
 	err = s.usersCsv.WriteAll(users)
 	if err != nil {
 		return fmt.Errorf("write all users: %w", err)
 	}
+
+	fmt.Printf("writing into csv time: %s\n", time.Since(start))
 
 	fmt.Println(len(users))
 
