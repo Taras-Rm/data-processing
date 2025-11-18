@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"processor/internal/es"
+	"processor/internal/infra/csv"
+	"processor/internal/service"
 
 	"github.com/elastic/go-elasticsearch/v8"
 )
@@ -23,9 +27,19 @@ func main() {
 		panic(err)
 	}
 
-	_, err = usersStore.GetAll(context.Background())
+	f, err := os.Create("users_output.csv")
+	if err != nil {
+		log.Fatalf("create csv: %v", err)
+	}
+
+	defer f.Close()
+
+	usersCsv := csv.NewUsersCsv(f)
+
+	usersService := service.NewUsersService(usersStore, &usersCsv)
+
+	err = usersService.ProcessAll(context.Background())
 	if err != nil {
 		fmt.Println(err)
 	}
-
 }
