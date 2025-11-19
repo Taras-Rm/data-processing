@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	run()
+}
+
+func run() {
 	config, err := config.Load()
 	if err != nil {
 		log.Fatalf("error riding config: %v", err)
@@ -50,7 +54,9 @@ func main() {
 	}
 }
 
-// TODO: implement config reading
+// TODO: implement config reading -> DONE
+
+// TODO: add Makefile
 // TODO: implement cuncurrency
 // TODO: refactor users es code (move into infra)
 
