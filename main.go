@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"processor/config"
 	"processor/internal/es"
 	"processor/internal/infra/csv"
 	"processor/internal/service"
@@ -13,9 +14,14 @@ import (
 )
 
 func main() {
+	config, err := config.Load()
+	if err != nil {
+		log.Fatalf("error riding config: %v", err)
+	}
+
 	client, err := elasticsearch.NewClient(elasticsearch.Config{
-		Username: "elastic",
-		Password: "changeme",
+		Username: config.Elastic.Username,
+		Password: config.Elastic.Password,
 	})
 	if err != nil {
 		panic(err)
@@ -43,3 +49,9 @@ func main() {
 		fmt.Println(err)
 	}
 }
+
+// TODO: implement config reading
+// TODO: implement cuncurrency
+// TODO: refactor users es code (move into infra)
+
+// TODO: investigate performance
